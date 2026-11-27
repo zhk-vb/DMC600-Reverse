@@ -1,0 +1,26 @@
+# Publish only the maintained source, docs and generated demo.
+*
+!/.gitignore
+!/LICENSE
+!/README.md
+!/README.en.md
+!/requirements.txt
+!/src/
+/src/*
+!/src/bt_scan.py
+!/src/meter_ascii.py
+!/src/meter_dashboard.py
+!/src/meter_locale.py
+!/src/meter_protocol.py
+!/src/meter_record.py
+!/docs/
+/docs/*
+!/docs/PROTOCOL.md
+!/docs/STATIC_ANALYSIS.md
+!/docs/FIRMWARE_V1.0.19.md
+!/samples/
+/samples/*
+!/samples/demo.csv
+!/tools/
+/tools/*
+!/tools/verify.py
