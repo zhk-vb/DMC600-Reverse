@@ -1,6 +1,7 @@
 """English strings for the desktop dashboard."""
 
 ENGLISH = {
+    "播放演示": "Play demo",
     '直流电压': 'DC voltage',
     '交流电压': 'AC voltage',
     '电阻': 'Resistance',

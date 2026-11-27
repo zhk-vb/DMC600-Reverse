@@ -30,6 +30,11 @@ MAX_WINDOW = 3600
 RATE_WINDOW = 5
 SNAPSHOT_WINDOW = 60
 QUERY_INTERVALS_MS = (500, 200)
+DEMO_FILE = (
+    Path(__file__).resolve().parent / "samples" / "demo.csv"
+    if getattr(sys, "frozen", False)
+    else Path(__file__).resolve().parents[1] / "samples" / "demo.csv"
+)
 RECORD_FIELDS = ("t_sec", "len", "hex", "mode", "value", "unit", "range",
                  "state", "hold", "voltage", "voltage_unit", "current", "current_unit")
 
@@ -315,6 +320,9 @@ class Dashboard:
         self.record_button.pack(side="left", padx=8)
         self.replay_button = ttk.Button(storage, text=self.tr("打开记录回放"), command=self.open_replay)
         self.replay_button.pack(side="left")
+        self.demo_button = ttk.Button(storage, text=self.tr("播放演示"),
+                                      command=lambda: self.start_replay(DEMO_FILE))
+        self.demo_button.pack(side="left", padx=(8, 0))
         self.export_format = ttk.Combobox(storage, state="readonly", width=12,
                                          values=("CSV", "ASCII / MDA"))
         self.export_format.current(0)
@@ -501,6 +509,7 @@ class Dashboard:
         self.scanning = True
         self.scan_button.configure(state="disabled")
         self.replay_button.configure(state="disabled")
+        self.demo_button.configure(state="disabled")
         self.button.configure(state="disabled")
         self.status.set(self.tr("正在扫描附近仪表"))
 
@@ -613,14 +622,16 @@ class Dashboard:
         path = filedialog.askopenfilename(parent=self.root, title=self.tr("打开仪表记录"),
                                           filetypes=[("CSV", "*.csv")])
         if path:
-            if self.record_path is not None and Path(path).resolve() == self.record_path:
-                self.finish_record()
-            if self.running:
-                self.pending_replay = Path(path)
-                self.toggle()
-            else:
-                self.capture = Path(path)
-                self.toggle()
+            self.start_replay(Path(path))
+
+    def start_replay(self, path):
+        if self.record_path is not None and path.resolve() == self.record_path:
+            self.finish_record()
+        if self.running:
+            self.pending_replay = path
+        else:
+            self.capture = path
+        self.toggle()
 
     def toggle(self):
         if self.scanning:
@@ -762,6 +773,7 @@ class Dashboard:
                     self.scanning = False
                     self.scan_button.configure(state="normal")
                     self.replay_button.configure(state="normal")
+                    self.demo_button.configure(state="normal")
                     self.button.configure(state="normal")
                     self.status.set(payload)
                 elif kind == "hold":
@@ -909,15 +921,58 @@ class Dashboard:
             finish_line()
 
 
+def choose_language(root):
+    selected = None
+    root.withdraw()
+    dialog = tk.Toplevel(root)
+    dialog.title("DMC-600")
+    dialog.resizable(False, False)
+    panel = ttk.Frame(dialog, padding=24)
+    panel.pack()
+    ttk.Label(panel, text="Interface language / 界面语言").pack(pady=(0, 14))
+    buttons = ttk.Frame(panel)
+    buttons.pack()
+
+    def choose(language):
+        nonlocal selected
+        selected = language
+        dialog.destroy()
+
+    english = ttk.Button(buttons, text="English", command=lambda: choose("en"))
+    english.pack(side="left", padx=5)
+    ttk.Button(buttons, text="简体中文", command=lambda: choose("zh")).pack(side="left", padx=5)
+    dialog.update_idletasks()
+    x = (dialog.winfo_screenwidth() - dialog.winfo_reqwidth()) // 2
+    y = (dialog.winfo_screenheight() - dialog.winfo_reqheight()) // 2
+    dialog.geometry(f"+{x}+{y}")
+    dialog.grab_set()
+    english.focus_set()
+    dialog.bind("<Return>", lambda _: english.invoke())
+    dialog.bind("<Escape>", lambda _: dialog.destroy())
+    root.wait_window(dialog)
+    return selected
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--address", default="", help="connect to a specific Bluetooth device ID")
-    parser.add_argument("--language", choices=("zh", "en"), default="zh", help="dashboard interface language")
+    parser.add_argument("--language", choices=("zh", "en"), help="dashboard interface language")
     parser.add_argument("--manual", action="store_true", help="skip auto-connect on startup")
-    parser.add_argument("--replay", type=Path, metavar="CSV", help="play a raw capture at real speed")
+    playback = parser.add_mutually_exclusive_group()
+    playback.add_argument("--replay", type=Path, metavar="CSV", help="play a raw capture at real speed")
+    playback.add_argument("--demo", action="store_const", dest="replay", const=DEMO_FILE,
+                          help="open the included sample for playback")
     args = parser.parse_args()
     root = tk.Tk()
-    Dashboard(root, args)
+    if args.language is None:
+        args.language = choose_language(root) if getattr(sys, "frozen", False) else "zh"
+        if args.language is None:
+            root.destroy()
+            return
+        root.deiconify()
+    dashboard = Dashboard(root, args)
+    if args.replay == DEMO_FILE:
+        root.after(250, dashboard.auto_start)
     root.mainloop()
 
 

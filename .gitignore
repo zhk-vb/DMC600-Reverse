@@ -3,7 +3,7 @@
 !/.gitignore
 !/LICENSE
 !/README.md
-!/README.en.md
+!/README.zh-CN.md
 !/requirements.txt
 !/src/
 /src/*
@@ -24,3 +24,4 @@
 !/tools/
 /tools/*
 !/tools/verify.py
+!/tools/build_windows.ps1
